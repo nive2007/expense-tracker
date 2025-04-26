@@ -34,15 +34,14 @@ void createAccount() {
     
     printf("\nCREATE NEW ACCOUNT\n");
     printf("ENTER USERNAME: ");
-    fgets(username, sizeof(username), stdin);
-    username[strcspn(username, "\n")] = 0; 
+    scanf("%s", username);
 
     FILE *file = fopen(accounts_file, "r");
     if (file) {
         char line[150];
         while (fgets(line, sizeof(line), file)) {
             char existing_username[MAX_USERNAME_LEN], existing_password[MAX_PASSWORD_LEN];
-            if (sscanf(line, " %[^\n]|%s", existing_username, existing_password) == 2) {
+            if (sscanf(line, "%[^|]|%s", existing_username, existing_password) == 2) {
                 if (strcmp(existing_username, username) == 0) {
                     printf("USERNAME ALREADY EXISTS. PLEASE CHOOSE A DIFFERENT ONE.\n");
                     fclose(file);
@@ -54,12 +53,10 @@ void createAccount() {
     }
 
     printf("ENTER PASSWORD: ");
-    fgets(password, sizeof(password), stdin);
-    password[strcspn(password, "\n")] = 0;
+    scanf("%s", password);
 
     printf("CONFIRM PASSWORD: ");
-    fgets(passwordConfirm, sizeof(passwordConfirm), stdin);
-    passwordConfirm[strcspn(passwordConfirm, "\n")] = 0;
+    scanf("%s", passwordConfirm);
 
     if (strcmp(password, passwordConfirm) != 0) {
         printf("PASSWORDS DO NOT MATCH! PLEASE TRY AGAIN.\n");
@@ -82,12 +79,10 @@ int login() {
     char line[150];
 
     printf("ENTER USERNAME: ");
-    fgets(username, sizeof(username), stdin);
-    username[strcspn(username, "\n")] = 0;
+    scanf("%s", username);
 
     printf("ENTER PASSWORD: ");
-    fgets(password, sizeof(password), stdin);
-    password[strcspn(password, "\n")] = 0;
+    scanf("%s", password);
 
     FILE *file = fopen(accounts_file, "r");
     if (!file) {
@@ -98,7 +93,7 @@ int login() {
     int logged_in = 0;
     while (fgets(line, sizeof(line), file)) {
         char stored_username[MAX_USERNAME_LEN], stored_password[MAX_PASSWORD_LEN];
-        if (sscanf(line, " %[^\n]|%s", stored_username, stored_password) == 2) {
+        if (sscanf(line, "%[^|]|%s", stored_username, stored_password) == 2) {
             if (strcmp(username, stored_username) == 0 && strcmp(password, stored_password) == 0) {
                 logged_in = 1;
                 strcpy(current_user, username);
@@ -106,7 +101,6 @@ int login() {
             }
         }
     }
-
     fclose(file);
 
     if (logged_in) {
@@ -151,7 +145,6 @@ void updateBalanceFile() {
 void saveExpenseToFile(Expense e) {
     char expense_file[100];
     sprintf(expense_file, "%s_expenses.txt", current_user);
-
     FILE *file = fopen(expense_file, "a");
     if (file) {
         fprintf(file, "%s|%s|%.2f|%s|%d\n", e.category, e.description, e.amount, e.datetime, e.month);
@@ -170,15 +163,22 @@ void addExpense() {
 
     printf("ENTER THE MONTH (1-12): ");
     scanf("%d", &e.month);
+
     if (e.month < 1 || e.month > 12) {
         printf("INVALID MONTH! PLEASE ENTER A VALUE BETWEEN 1 AND 12.\n");
         return;
     }
 
+    getchar(); 
+
     printf("CATEGORY       : ");
-    scanf(" %[^\n]", e.category);
+    fgets(e.category, sizeof(e.category), stdin);
+    e.category[strcspn(e.category, "\n")] = 0;
+
     printf("DESCRIPTION    : ");
-    scanf(" %[^\n]", e.description);
+    fgets(e.description, sizeof(e.description), stdin);
+    e.description[strcspn(e.description, "\n")] = 0;
+
     printf("AMOUNT (RS)    : ");
     scanf("%f", &e.amount);
 
@@ -195,6 +195,8 @@ void addExpense() {
 }
 
 void viewExpensesByCategoryTable() {
+    system("cls");
+
     char expense_file[100];
     sprintf(expense_file, "%s_expenses.txt", current_user);
     FILE *file = fopen(expense_file, "r");
@@ -205,6 +207,7 @@ void viewExpensesByCategoryTable() {
 
     Expense expenses[500];
     int count = 0;
+    int i, j;
     char line[256];
 
     while (fgets(line, sizeof(line), file)) {
@@ -218,7 +221,6 @@ void viewExpensesByCategoryTable() {
 
     printf("\n========== EXPENSE REPORT (CATEGORY-WISE) ==========\n");
 
-    int i, j;
     for (i = 0; i < count; i++) {
         int found = 0;
         for (j = 0; j < printedCount; j++) {
@@ -247,9 +249,12 @@ void viewExpensesByCategoryTable() {
 }
 
 void viewExpensesByMonth() {
+    system("cls");
+
     int targetMonth;
     printf("ENTER THE MONTH TO FILTER (1-12): ");
     scanf("%d", &targetMonth);
+
     if (targetMonth < 1 || targetMonth > 12) {
         printf("INVALID MONTH.\n");
         return;
@@ -307,7 +312,6 @@ void printAllExpenses() {
         printf("%-3d %-15s %-25s RS %-7.2f %-20s\n", serial++, e.category, e.description, e.amount, e.datetime);
         totalSpent += e.amount;
     }
-
     fclose(file);
 
     printf("\nTOTAL SPENT       : RS %.2f\n", totalSpent);
@@ -326,21 +330,23 @@ void deleteAllExpenses() {
 }
 
 void deleteAccount() {
-    char line[200], username[MAX_USERNAME_LEN], password[MAX_PASSWORD_LEN];
+    char line[200];
     printf("ARE YOU SURE YOU WANT TO DELETE YOUR ACCOUNT? (YES TO CONFIRM): ");
+    getchar(); 
     fgets(line, sizeof(line), stdin);
     line[strcspn(line, "\n")] = 0;
+
     if (strcmp(line, "YES") != 0) return;
 
     FILE *file = fopen(accounts_file, "r");
     FILE *temp = fopen("temp.txt", "w");
 
-    while (fscanf(file, " %[^\n]|%s", username, password) != EOF) {
+    char username[MAX_USERNAME_LEN], password[MAX_PASSWORD_LEN];
+    while (fscanf(file, "%[^|]|%s\n", username, password) != EOF) {
         if (strcmp(username, current_user) != 0) {
             fprintf(temp, "%s|%s\n", username, password);
         }
     }
-
     fclose(file);
     fclose(temp);
 
@@ -365,9 +371,8 @@ void displayMenu() {
     printf("                3. VIEW EXPENSES BY CATEGORY\n");
     printf("                4. VIEW EXPENSES BY MONTH\n");
     printf("                5. DELETE ALL EXPENSES\n");
-    printf("                6. VIEW EXPENSES\n");
-    printf("                7. DELETE ACCOUNT\n");
-    printf("                8. EXIT\n");
+    printf("                6. DELETE ACCOUNT\n");
+    printf("                7. EXIT\n");
     printf("         ============================================\n");
     printf("ENTER YOUR CHOICE: ");
 }
@@ -378,14 +383,16 @@ int main() {
 
     while (1) {
         if (!loggedIn) {
-            printf("\n\t\t\t\t\t=========== WELCOME TO EXPENSE TRACKER ===========\n\n");
-            printf("\t\t\t\t\t\t\t1. CREATE ACCOUNT\t\t\t\t\t\t\t\t\t\n");
-            printf(" \t\t\t\t\t\t\t2. LOGIN\t\t\t\t\t\t\t\t\t\n");
-            printf("\t\t\t\t\t\t\t3. EXIT\t\t\t\t\t\t\t\t\t\n");
-            printf("\n\t\t\t\t\t==================================================\n");
+            printf("\n\t\t\t=========== WELCOME TO EXPENSE TRACKER ===========\t\t\t\t\n\n");
+            printf("\t\t\t\t\t1. CREATE ACCOUNT\t\t\t\t\n");
+            printf("\t\t\t\t\t2. LOGIN\t\t\t\t\n");
+            printf("\t\t\t\t\t3. EXIT\t\t\t\t\n\n");
+            printf("\t\t\t==================================================\t\t\t\t\t\n");
             printf("ENTER YOUR CHOICE: ");
-            int action; 
+
+            int action;
             scanf("%d", &action);
+            getchar(); 
 
             if (action == 1) createAccount();
             else if (action == 2) loggedIn = login();
@@ -398,6 +405,7 @@ int main() {
         } else {
             displayMenu();
             scanf("%d", &choice);
+            getchar(); 
 
             switch (choice) {
                 case 1: 
@@ -416,21 +424,17 @@ int main() {
 					deleteAllExpenses(); 
 					break;
                 case 6: 
-					printAllExpenses(); 
-					break;
-                case 7: 
 					deleteAccount(); 
 					loggedIn = 0; 
 					break;
-                case 8: 
-                    printf("THANK YOU FOR USING EXPENSE TRACKER!\n"); 
-                    exit(0);
+                case 7: 
+					printf("THANK YOU FOR USING EXPENSE TRACKER!\n"); 
+					exit(0);
                 default: 
-                    printf("INVALID CHOICE. PLEASE TRY AGAIN.\n");
+					printf("INVALID CHOICE. PLEASE TRY AGAIN.\n");
             }
         }
     }
 
     return 0;
 }
-
